@@ -35,8 +35,8 @@ metadata:
   name: mysql
   namespace: expense
 spec:
-  serviceName: mysql-headless
-  replicas: 2
+  serviceName: mysql
+  replicas: 1
   selector:
     matchLabels:
       project: expense
@@ -49,36 +49,99 @@ spec:
         tier: db
         app: mysql
     spec:
+      # INIT CONTAINER ADDED HERE
+      initContainers:
+      - name: fix-mysql-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /var/lib/mysql"]
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
       containers:
       - name: mysql
         image: srlaf/mysql:a1
-        ports:
-        - containerPort: 3306
-          name: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               name: db-credentials
               key: ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          value: expense_db
         - name: MYSQL_USER
-          value: expense
+          value: expense_user
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               name: db-credentials
               key: DB_PASSWORD
-        - name: MYSQL_DATABASE
-          value: transactions
+        ports:
+        - containerPort: 3306
         volumeMounts:
-        - name: mysql-persistent-storage
+        - name: mysql-data
           mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
   volumeClaimTemplates:
   - metadata:
-      name: mysql-persistent-storage
+      name: mysql-data
     spec:
       accessModes: ["ReadWriteOnce"]
-      storageClassName: ebs-sc
       resources:
         requests:
-          storage: 1.5Gi
+          storage: 1Gi
+# apiVersion: apps/v1
+# kind: StatefulSet
+# metadata:
+#   name: mysql
+#   namespace: expense
+# spec:
+#   serviceName: mysql-headless
+#   replicas: 2
+#   selector:
+#     matchLabels:
+#       project: expense
+#       tier: db
+#       app: mysql
+#   template:
+#     metadata:
+#       labels:
+#         project: expense
+#         tier: db
+#         app: mysql
+#     spec:
+#       containers:
+#       - name: mysql
+#         image: srlaf/mysql:a1
+#         ports:
+#         - containerPort: 3306
+#           name: mysql
+#         env:
+#         - name: MYSQL_ROOT_PASSWORD
+#           valueFrom:
+#             secretKeyRef:
+#               name: db-credentials
+#               key: ROOT_PASSWORD
+#         - name: MYSQL_USER
+#           value: expense
+#         - name: MYSQL_PASSWORD
+#           valueFrom:
+#             secretKeyRef:
+#               name: db-credentials
+#               key: DB_PASSWORD
+#         - name: MYSQL_DATABASE
+#           value: transactions
+#         volumeMounts:
+#         - name: mysql-persistent-storage
+#           mountPath: /var/lib/mysql
+#   volumeClaimTemplates:
+#   - metadata:
+#       name: mysql-persistent-storage
+#     spec:
+#       accessModes: ["ReadWriteOnce"]
+#       storageClassName: ebs-sc
+#       resources:
+#         requests:
+#           storage: 1.5Gi
