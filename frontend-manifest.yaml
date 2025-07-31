@@ -1,0 +1,52 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: frontend
+  namespace: expense
+  labels:
+    project: expense
+    tier: web
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      project: expense
+      tier: web
+      app: frontend
+  template:
+    metadata:
+      labels:
+        project: expense
+        tier: web
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: srlaf/frontend:a1
+        ports:
+        - containerPort: 80
+        envFrom:
+        - secretRef:
+            name: frontend-secrets
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: frontend
+  namespace: expense
+  labels:
+    project: expense
+    tier: web
+    app: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    project: expense
+    tier: web
+    app: frontend
+  ports:
+  - name: frontend
+    protocol: TCP
+    port: 80
+    targetPort: 80
